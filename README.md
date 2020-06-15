@@ -41,7 +41,7 @@ python Send_mail.py end
 
 |  オプション  |  値  |
 | ---- | ---- |
-|  state  |  start |
+|  state  |  end |
 
 # 注意
 現状でも動きますが，あくまで仮完成です．ご了承ください．
