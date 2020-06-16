@@ -2,6 +2,7 @@
 import argparse
 import datetime
 import os
+from os.path import join
 import smtplib
 from email.mime.text import MIMEText
 from email.utils import formatdate
@@ -59,6 +60,13 @@ def load_time_stamp():
     
     return timestamp
 
+# 対応する本文を読み込み
+def load_body(path):
+    with open(path, "r") as f:
+        lines = f.readlines()
+        
+    return lines
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -77,14 +85,15 @@ if __name__ == '__main__':
     if args.state == "start":
         # 休憩あり
         if args.rest_start_time is not None:
-            body = '音響・音声データ解析，プログラミング等の業務を{}から{}まで行います．途中休憩は{}から{}まで取る予定です．'.format(args.start_time, 
+            body = load_body(join(TIMESTAMP_PATH, "start_with_rest.txt"))
+            body = body.format(args.start_time, 
                                                 args.end_time, 
                                                 args.rest_start_time, 
                                                 args.rest_end_time)
         # 休憩なし
         else:
-            body = '音響・音声データ解析，プログラミング等の業務を{}から{}まで行います．途中休憩は取る予定はありません．'.format(args.start_time,
-                                                args.end_time)
+            body = load_body(join(TIMESTAMP_PATH, "start_without_rest.txt"))
+            body = body.format(args.start_time, args.end_time)
 
         subject = SUBJECT_START
         write_time_stamp(args.start_time, args.end_time, args.rest_start_time, args.rest_end_time)
@@ -92,9 +101,11 @@ if __name__ == '__main__':
     else:
         start_time, end_time, start_rest_time, end_rest_time = load_time_stamp()
         if start_rest_time == "None":
-            body = '音響・音声データ解析，プログラミング等の業務を{}から{}まで行いました．途中休憩はありませんでした．'.format(start_time, end_time)
+            body = load_body(join(TIMESTAMP_PATH, "end_with_rest.txt"))
+            body = body.format(start_time, end_time)
         else:
-            body = '音響・音声データ解析，プログラミング等の業務を{}から{}まで行いました．途中休憩は{}から{}まで取りました．'.format(start_time, end_time, start_rest_time, end_rest_time)
+            body = load_body(join(TIMESTAMP_PATH, "end_with_rest.txt"))
+            body = body.format(start_time, end_time, start_rest_time, end_rest_time)
         subject = SUBJECT_END
 
     msg = create_message(FROM_ADDRESS, to_addr, CC, BCC, subject, body)
