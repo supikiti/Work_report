@@ -9,20 +9,19 @@ from email.utils import formatdate
 import ssl
 import yaml
 
-f = open("./info.yaml", "r")
-info = yaml.load(f)
+f = open("info.yml", "r")
+data = yaml.load(f)
 
-YOUR_NAME = info.YOUR_NAME
-FROM_ADDRESS = info.FROM_ADDRESS
-MY_PASSWORD = info.MY_PASSWORD
-TO_ADDRESS = info.TO_ADDRESS
-CC = info.CC
-BCC = info.BCC
-
+YOUR_NAME = data["YOUR_NAME"]
+FROM_ADDRESS = data["FROM_ADDRESS"]
+MY_PASSWORD = data["MY_PASSWORD"]
+TO_ADDRESS = data["TO_ADDRESS"]
+CC = data["CC"]
+BCC = data["BCC"]
 SUBJECT_START = '{} 勤務開始'.format(YOUR_NAME)
 SUBJECT_END = '{}　勤務終了'.format(YOUR_NAME)
 TIMESTAMP_PATH = "./TimeStamp"
-
+BODY_PATH = "./body"
 
 def create_message(from_addr, to_addr, cc_addrs, bcc_addrs, subject, body):
     msg = MIMEText(body)
@@ -34,13 +33,17 @@ def create_message(from_addr, to_addr, cc_addrs, bcc_addrs, subject, body):
     msg['Date'] = formatdate()
     return msg
 
-
-def send(from_addr, to_addrs, msg):
+def send(from_addr, to_addrs, cc, msg):
     #context = ssl.create_default_context()
-    smtpobj = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10)
-    smtpobj.login(FROM_ADDRESS, MY_PASSWORD)
-    smtpobj.sendmail(from_addr, to_addrs, msg.as_string())
-    smtpobj.close()
+    smtp = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)
+    smtp.set_debuglevel(8)
+    smtp.ehlo()
+    smtp.starttls()
+    smtp.ehlo()
+    smtp.login(FROM_ADDRESS, MY_PASSWORD)
+    to_addrs = [to_addr] + [cc]
+    smtp.sendmail(from_addr, to_addrs, msg.as_string())
+    smtp.close()
 
 def write_time_stamp(start_time, end_time, rest_start_time, rest_end_time):
     # 今日の日付を記録
@@ -63,7 +66,7 @@ def load_time_stamp():
 # 対応する本文を読み込み
 def load_body(path):
     with open(path, "r") as f:
-        lines = f.readlines()
+        lines = f.read()
         
     return lines
 
@@ -85,14 +88,14 @@ if __name__ == '__main__':
     if args.state == "start":
         # 休憩あり
         if args.rest_start_time is not None:
-            body = load_body(join(TIMESTAMP_PATH, "start_with_rest.txt"))
+            body = load_body(join(BODY_PATH, "start_with_rest.txt"))
             body = body.format(args.start_time, 
                                                 args.end_time, 
                                                 args.rest_start_time, 
                                                 args.rest_end_time)
         # 休憩なし
         else:
-            body = load_body(join(TIMESTAMP_PATH, "start_without_rest.txt"))
+            body = load_body(join(BODY_PATH, "start_without_rest.txt"))
             body = body.format(args.start_time, args.end_time)
 
         subject = SUBJECT_START
@@ -101,13 +104,14 @@ if __name__ == '__main__':
     else:
         start_time, end_time, start_rest_time, end_rest_time = load_time_stamp()
         if start_rest_time == "None":
-            body = load_body(join(TIMESTAMP_PATH, "end_with_rest.txt"))
+            body = load_body(join(BODY_PATH, "end_without_rest.txt"))
             body = body.format(start_time, end_time)
         else:
-            body = load_body(join(TIMESTAMP_PATH, "end_with_rest.txt"))
+            body = load_body(join(BODY_PATH, "end_with_rest.txt"))
             body = body.format(start_time, end_time, start_rest_time, end_rest_time)
         subject = SUBJECT_END
 
     msg = create_message(FROM_ADDRESS, to_addr, CC, BCC, subject, body)
-    send(FROM_ADDRESS, to_addr, msg)
+    print(body, to_addr, CC)
+    send(FROM_ADDRESS, to_addr, CC, msg)
     print("Finish sending !!!")
